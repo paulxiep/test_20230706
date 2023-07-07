@@ -1,8 +1,5 @@
-pip==22.0.4
 streamlit
-sqlalchemy
 pandas
-psycopg2
 environ
 langchain
 openai
