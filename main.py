@@ -8,7 +8,7 @@ import streamlit as st
 from langchain import OpenAI, SQLDatabase, SQLDatabaseChain
 
 from constants import *
-from create_table import create_postgres_table
+#from create_table import create_postgres_table
 from unit_tests import test_queries
 
 environ.Env.read_env()
@@ -86,6 +86,7 @@ if file:
     sales_data['EUROPE'] = sales_data['TERRITORY'] == 'EMEA'
     sales_data.columns = [c.lower() for c in sales_data.columns]
     if not cloud_mode:
+        from create_table import create_postgres_table
         create_postgres_table(sales_data, name='temp')
         # with psycopg2.connect(host=address,
         #                       port=5432,
