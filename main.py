@@ -8,19 +8,19 @@ import streamlit as st
 from langchain import OpenAI, SQLDatabase, SQLDatabaseChain
 
 from constants import *
-#from create_table import create_postgres_table
 from unit_tests import test_queries
 
 environ.Env.read_env()
 
 
 class NaturalQuery:
-    def __init__(self, data_columns,
+    def __init__(self, data_columns, cloud=True,
                  llm=OpenAI(model_name='gpt-3.5-turbo-16k', openai_api_key=environ.Env()('OPENAI_API_KEY'))):
         self.data_columns = data_columns
         self.llm = llm
-        db = SQLDatabase.from_uri(f'postgresql+psycopg2://{user}:{password}@{address}:5432/{dbname}')
-        self.db_chain = SQLDatabaseChain(llm=self.llm, database=db, verbose=True)
+        if not cloud:
+            db = SQLDatabase.from_uri(f'postgresql+psycopg2://{user}:{password}@{address}:5432/{dbname}')
+            self.db_chain = SQLDatabaseChain(llm=self.llm, database=db, verbose=True)
 
     def llm_query(self, question):
         answer = self.llm(
@@ -125,5 +125,5 @@ if (cloud_mode and file) or (not cloud_mode and (file or not use_csv)):
             elif not cloud_mode and (file or not use_csv):
                 table_name = 'temp' if not use_csv else 'sales_data'
                 st.text(test_query)
-                st.text(NaturalQuery(COLUMNS).chain(test_query, table_name=table_name))
+                st.text(NaturalQuery(COLUMNS).chain(test_query, cloud=False, table_name=table_name))
                 st.divider()
