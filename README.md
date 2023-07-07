@@ -7,6 +7,7 @@
 
 #### Notes
 
+ - Current in the unit test stage, prompts are fixed and are listed in unit_tests.py
  - Currently the app is in development, so I try to use the latest version of libraries possible.
  - Only in established apps will I start fixing library versions.
  - requirements.txt is for cloud version. Additional requirements for local version with Postgresql is in db_requirements.txt
