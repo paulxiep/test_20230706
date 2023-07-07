@@ -125,5 +125,5 @@ if (cloud_mode and file) or (not cloud_mode and (file or not use_csv)):
             elif not cloud_mode and (file or not use_csv):
                 table_name = 'temp' if not use_csv else 'sales_data'
                 st.text(test_query)
-                st.text(NaturalQuery(COLUMNS).chain(test_query, cloud=False, table_name=table_name))
+                st.text(NaturalQuery(COLUMNS, cloud=False).chain(test_query, table_name=table_name))
                 st.divider()
