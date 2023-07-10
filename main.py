@@ -1,129 +1,88 @@
-import io
-
-import duckdb
 import environ
 import pandas as pd
-import sqlalchemy
 import streamlit as st
-from langchain import OpenAI, SQLDatabase, SQLDatabaseChain
+from langchain import SQLDatabase, SQLDatabaseChain
+from langchain.agents import create_pandas_dataframe_agent
+from langchain.agents.agent_types import AgentType
+from langchain.chat_models import ChatOpenAI
 
 from constants import *
-from unit_tests import test_queries
 
+st.set_page_config(page_title='Data Assistance Wizard')
 environ.Env.read_env()
 
 
 class NaturalQuery:
-    def __init__(self, data_columns, cloud=True,
-                 llm=OpenAI(model_name='gpt-3.5-turbo-16k', openai_api_key=environ.Env()('OPENAI_API_KEY'))):
-        self.data_columns = data_columns
+    def __init__(self,
+                 llm=ChatOpenAI(model_name='gpt-3.5-turbo-16k', openai_api_key=environ.Env()('OPENAI_API_KEY'))):
         self.llm = llm
-        if not cloud:
-            db = SQLDatabase.from_uri(f'postgresql+psycopg2://{user}:{password}@{address}:5432/{dbname}')
-            self.db_chain = SQLDatabaseChain(llm=self.llm, database=db, verbose=True)
 
-    def llm_query(self, question):
-        answer = self.llm(
-            f'Table name = "sales_data". Table columns are {", ".join(self.data_columns)}. "EUROPE" column is boolean. Turn "{question}" into SQL query. Wrap the query in "```"')
-        return self.llm(f'Extract the sql query from {answer} as simple string without quote')
-        # answer = self.llm([HumanMessage(
-        #     content=f'Table name = "sales_data". Table columns are {", ".join(self.data_columns)}. "EUROPE" column is boolean. Turn "{question}" into SQL query. Wrap the query in "```"')]).content
-        # return self.llm([HumanMessage(content=f'Extract the sql query from {answer} as simple string without quote')]).content
+    def csv_run(self, prompt, df):
+        return create_pandas_dataframe_agent(self.llm, df,
+                                             verbose=VERBOSE,
+                                             agent_type=AgentType.OPENAI_FUNCTIONS
+                                             ).run(prompt)
 
-    def chain(self, prompt, table_name):
-        question = f"""
-With table {table_name}, given an input question, first create a syntactically correct postgresql query to run, then look at the results of the query and return the answer.
-Use the following format:
+    def db_run(self, prompt, db):
+        return SQLDatabaseChain.from_llm(llm=self.llm,
+                                         db=db,
+                                         verbose=VERBOSE
+                                         ).run(prompt)
 
-Question: Question here
-SQLQuery: SQL Query to run
-SQLResult: Result of the SQLQuery
-Answer: Final answer here
-
-{prompt}
-"""
-        return self.db_chain.run(question)
-
-
-@st.cache_data
-def prompt_to_query(prompt):
-    return NaturalQuery(COLUMNS).llm_query(prompt).replace("'Y'", "True").replace("'N'", "False")
+def connect_to_db():
+    try:
+        import psycopg2
+        db_info = f'{db_user}:{db_password}@{db_address}:{db_port}/{db_name}'
+        st.session_state['db'] = SQLDatabase.from_uri(f'postgresql+psycopg2://{db_info}')
+        # st.session_state['db_df'] = pd.read_sql(f'''SELECT * FROM {db_table_name} TABLESAMPLE SYSTEM_ROWS (40)''',
+        #                                         con=sqlalchemy.create_engine(f'postgresql://{db_info}'))
+    except Exception as e:
+        print(e)
+        st.session_state['db'] = None
+        st.session_state['db_df'] = None
+        st.session_state['failed_db'] = True
 
 
-def query(query_text, conn=None):
-    if conn is None:
-        return duckdb.query(query_text).df()
-    else:
-        return pd.read_sql(query_text, con=conn)
+with st.sidebar:
+    csv_encoding = st.text_input('csv_encoding', value=DEFAULT_ENCODING)
+    csv_file = st.file_uploader('Upload csv')
+    if st.session_state.get('failed_df', False):
+        st.text('read csv failed, please check your file format and encoding')
+        st.session_state['failed_df'] = False
+    db_user = st.text_input('db_user', value=DB_USER)
+    db_password = st.text_input('db_password', value=DB_PASSWORD)
+    db_address = st.text_input('db_address', value=DB_ADDRESS)
+    db_port = st.text_input('db_port', value=DB_PORT)
+    db_name = st.text_input('db_name', value=DB_NAME)
+    # db_table_name = st.text_input('db_table_name')
+    db_connect = st.button('Connect', on_click=connect_to_db)
+    if st.session_state.get('failed_db', False):
+        st.text('connection to new database failed')
+        st.session_state['failed_db'] = False
+
+st.title('Data Assistance Wizard')
+st.header('Ask questions about your data')
+
+if csv_file:
+    try:
+        st.session_state['df'] = pd.read_csv(csv_file, encoding=csv_encoding)
+    except:
+        st.session_state['df'] = None
+        st.session_state['failed_df'] = True
+
+prompt = st.text_input('Prompt')
+b1, b2 = st.columns(2)
+with b1:
+    if st.button('Ask about csv data'):
+        if st.session_state.get('df', None) is not None:
+            st.write(NaturalQuery().csv_run(prompt, st.session_state['df']))
+        else:
+            st.text('Error: no successful csv upload')
+with b2:
+    if st.button('Ask about Postgres data'):
+        if st.session_state.get('db', None) is not None:
+            st.write(NaturalQuery().db_run(prompt, st.session_state['db']))
+        else:
+            st.text('Error: no successful database connection')
 
 
-c1, c2 = st.columns(2)
-
-with c1:
-    cloud_mode = st.checkbox('Are you running app on cloud or otherwise do you have no access to Postgresql?',
-                             value=True)
-with c2:
-    if not cloud_mode:
-        use_csv = st.checkbox('Use uploaded csv instead of existing Postgres table', value=True)
-    else:
-        use_csv = True
-
-if use_csv:
-    file = st.file_uploader('Upload sales_data.csv')
-else:
-    file = False
-if not cloud_mode:
-    # user = 'postgres'
-    # password = '12345678'
-    # dbname = 'test_20230706'
-    # address = 'localhost'
-    conn = sqlalchemy.create_engine(f'postgresql://{user}:{password}@{address}:5432/{dbname}')
-else:
-    conn = None
-
-if file:
-    sales_data = pd.read_csv(io.StringIO(file.read().decode('latin1')))
-    sales_data['EUROPE'] = sales_data['TERRITORY'] == 'EMEA'
-    sales_data.columns = [c.lower() for c in sales_data.columns]
-    if not cloud_mode:
-        from create_table import create_postgres_table
-        create_postgres_table(sales_data, name='temp')
-        # with psycopg2.connect(host=address,
-        #                       port=5432,
-        #                       database=dbname,
-        #                       user=user,
-        #                       password=password
-        #                       ) as connection:
-        #     with connection.cursor() as cursor:
-        #         cursor.execute(f"CREATE SCHEMA IF NOT EXISTS public;")
-        # sales_data.to_sql('sales_data', conn, schema='public', method=psql_insert_copy, if_exists='replace')
-
-if (cloud_mode and file) or (not cloud_mode and (file or not use_csv)):
-    # question = st.text_input('Input prompt')
-    #
-    # if len(question) > 0:
-    #     answer = prompt_to_query(question)
-    #     with st.expander('see SQL'):
-    #         st.text(answer)
-    #     st.dataframe(query(answer, conn=conn))
-
-    with st.expander('unit tests'):
-        for test_query in test_queries:
-            if cloud_mode and file:
-                answer = prompt_to_query(test_query).lstrip('"').rstrip('"')
-                st.text(test_query)
-                st.text(answer)
-                try:
-                    queried = query(answer, conn=conn)
-                    st.dataframe(queried)
-                    # st.text(OpenAI(model_name='gpt-3.5-turbo', openai_api_key=environ.Env()('OPENAI_API_KEY'))([HumanMessage(content=f'Explain following query result "{queried}"')]))
-
-                except Exception as e:
-                    st.text('prompt failed to convert to query')
-                    st.text(e)
-                st.divider()
-            elif not cloud_mode and (file or not use_csv):
-                table_name = 'temp' if not use_csv else 'sales_data'
-                st.text(test_query)
-                st.text(NaturalQuery(COLUMNS, cloud=False).chain(test_query, table_name=table_name))
-                st.divider()

@@ -1,11 +1,8 @@
-COLUMNS = ['ORDERNUMBER', 'QUANTITYORDERED', 'PRICEEACH', 'ORDERLINENUMBER',
-                                      'SALES', 'ORDERDATE', 'STATUS', 'QTR_ID', 'MONTH_ID', 'YEAR_ID',
-                                      'PRODUCTLINE', 'MSRP', 'PRODUCTCODE', 'CUSTOMERNAME', 'PHONE',
-                                      'ADDRESSLINE1', 'ADDRESSLINE2', 'CITY', 'STATE', 'POSTALCODE',
-                                      'COUNTRY', 'CONTACTLASTNAME', 'CONTACTFIRSTNAME',
-                                      'DEALSIZE', 'EUROPE', 'TERRITORY']
+VERBOSE = False
+DEFAULT_ENCODING = 'latin1'
 
-user = 'postgres'
-password = '12345678'
-dbname = 'test_20230706'
-address = 'localhost'
+DB_USER = 'postgres'
+DB_PASSWORD = '12345678'
+DB_NAME = 'test_20230706'
+DB_ADDRESS = 'localhost'
+DB_PORT = '5432'
