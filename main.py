@@ -48,7 +48,7 @@ def connect_to_db():
 
 
 def enter_password():
-    if entered_password == APP_PASSWORD:
+    if entered_password == environ.Env()('APP_PASSWORD'):
         st.session_state.unlocked = True
 
 
@@ -57,9 +57,12 @@ def clear_chat():
 
 
 if not st.session_state.get('unlocked', False):
-    st.text('please find password in constants.py on github repo')
-    entered_password = st.text_input('Enter app password')
-    entering_password = st.button('Enter', on_click=enter_password)
+    if environ.Env()('UNLOCKED') == 'yes':
+        st.session_state.unlocked = True
+    else:
+        st.text('please find password in constants.py on github repo')
+        entered_password = st.text_input('Enter app password')
+        entering_password = st.button('Enter', on_click=enter_password)
 else:
     with st.sidebar:
         data_source = st.radio('Ask about', options=['csv', 'postgres'])
