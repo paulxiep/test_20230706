@@ -60,7 +60,7 @@ if not st.session_state.get('unlocked', False):
     if environ.Env()('UNLOCKED') == 'yes':
         st.session_state.unlocked = True
     else:
-        st.text('please find password in constants.py on github repo')
+        st.text("password is the name of the 'client' company")
         entered_password = st.text_input('Enter app password')
         entering_password = st.button('Enter', on_click=enter_password)
 else:
