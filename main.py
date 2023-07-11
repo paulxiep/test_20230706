@@ -63,7 +63,7 @@ if not st.session_state.get('unlocked', False):
         st.session_state.unlocked = True
         st.experimental_rerun()
     else:
-        st.text("password is the name of the 'client' company")
+        st.text("Password is the name of the 'client' company, lower case.")
         entered_password = st.text_input('Enter app password')
         entering_password = st.button('Enter', on_click=enter_password)
 else:
