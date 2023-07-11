@@ -4,6 +4,7 @@ Version Day 2
 
 #### Assumptions
 
+ - Python version required is 3.9+
  - .env with the right secrets should be in the working directory if running local.
 
 #### Notes
