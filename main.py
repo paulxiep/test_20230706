@@ -27,6 +27,8 @@ class NaturalQuery:
                                              ).run(prompt)
 
     def db_run(self, prompt, db):
+        if APPEND_TABLE_NAME_TO_PROMPT:
+            prompt += f'Based on {db_table_name} table, '
         return SQLDatabaseChain.from_llm(llm=self.llm,
                                          db=db,
                                          verbose=VERBOSE
@@ -59,6 +61,7 @@ def clear_chat():
 if not st.session_state.get('unlocked', False):
     if environ.Env()('UNLOCKED') == 'yes':
         st.session_state.unlocked = True
+        st.experimental_rerun()
     else:
         st.text("password is the name of the 'client' company")
         entered_password = st.text_input('Enter app password')
@@ -76,7 +79,7 @@ else:
         db_address = st.text_input('db_address', value=DB_ADDRESS)
         db_port = st.text_input('db_port', value=DB_PORT)
         db_name = st.text_input('db_name', value=DB_NAME)
-        db_table_name = st.text_input('db_table_name')
+        db_table_name = st.text_input('db_table_name', value=DB_TABLE_NAME)
         db_connect = st.button('Connect', on_click=connect_to_db)
         if st.session_state.get('failed_db', False):
             st.text('connection to new database failed')
