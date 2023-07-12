@@ -28,7 +28,7 @@ class NaturalQuery:
 
     def db_run(self, prompt, db):
         if APPEND_TABLE_NAME_TO_PROMPT:
-            prompt += f'Based on {db_table_name} table, '
+            prompt = f'Based on {db_table_name} table, ' + prompt
         return SQLDatabaseChain.from_llm(llm=self.llm,
                                          db=db,
                                          verbose=VERBOSE
@@ -59,6 +59,7 @@ def clear_chat():
 
 
 if not st.session_state.get('unlocked', False):
+    '''lock/unlock mechanism'''
     if environ.Env()('UNLOCKED') == 'yes':
         st.session_state.unlocked = True
         st.experimental_rerun()
@@ -68,6 +69,7 @@ if not st.session_state.get('unlocked', False):
         entering_password = st.button('Enter', on_click=enter_password)
 else:
     with st.sidebar:
+        '''for csv and db connection input'''
         data_source = st.radio('Ask about', options=['csv', 'postgres'])
         csv_encoding = st.text_input('csv_encoding', value=DEFAULT_ENCODING)
         csv_file = st.file_uploader('Upload csv')
@@ -92,19 +94,25 @@ else:
                 st.session_state['df'] = None
                 st.session_state['failed_df'] = True
 
+    '''For the main center tab'''
     st.title('Data Assistance Wizard')
     st.markdown("<div id='link_to_top'></div>", unsafe_allow_html=True)
     st.header('Ask questions about your data')
 
+    '''chat_input always appears at the bottom no matter where you define it.'''
     prompt = st.chat_input('Ask something about your data')
     t1, t2 = st.tabs(['chat', 'preview'])
     with t1:
+        '''chat (main) tab for the conversation'''
         for message in st.session_state.chat_messages:
+            '''display all stored conversation messages'''
             with st.chat_message(message['role']):
                 st.write(message['content'])
 
         if prompt:
+            '''when prompt is entered'''
             st.session_state.chat_messages.append({'role': 'user', 'content': prompt})
+            '''call csv or db run'''
             if data_source == 'csv':
                 if st.session_state.get('df', None) is not None:
                     try:
@@ -125,6 +133,7 @@ else:
             st.session_state.tab = 'chat'
             st.experimental_rerun()
     with t2:
+        '''preview tab'''
         with st.expander('csv preview'):
             st.dataframe(st.session_state.get('df', pd.DataFrame([[]])))
 

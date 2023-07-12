@@ -14,4 +14,5 @@ DB_ADDRESS = 'localhost'
 DB_PORT = '5432'
 DB_TABLE_NAME = 'sales_data'
 
+# used for db_run, table name will be added to prompt to tell LLM to look at specific table
 APPEND_TABLE_NAME_TO_PROMPT = True
